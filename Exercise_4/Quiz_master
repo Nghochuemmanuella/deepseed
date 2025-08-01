@@ -1,0 +1,204 @@
+import time
+import json
+import os
+import sys
+
+# Quiz questions data structure
+QUIZ_QUESTIONS = {
+    "Science": {
+        "easy": [
+            {"question": "What planet is known as the Red Planet?",
+             "options": ["Earth", "Mars", "Jupiter", "Venus"], "answer": 1},
+            {"question": "Which gas do plants absorb from the atmosphere?",
+             "options": ["Oxygen", "Nitrogen", "Carbon dioxide", "Helium"], "answer": 2},
+            {"question": "Water freezes at 0 degrees on which temperature scale?",
+             "options": ["Celsius", "Fahrenheit", "Kelvin", "Rankine"], "answer": 0},
+            {"question": "What force keeps us on the ground?",
+             "options": ["Magnetism", "Gravity", "Friction", "Electricity"], "answer": 1},
+            {"question": "What is the chemical symbol for water?",
+             "options": ["WO", "H2O", "O2", "HO2"], "answer": 1}
+        ],
+        "hard": [
+            {"question": "What is the atomic number of Carbon?",
+             "options": ["4", "6", "8", "12"], "answer": 1},
+            {"question": "Who developed the theory of relativity?",
+             "options": ["Newton", "Einstein", "Tesla", "Bohr"], "answer": 1},
+            {"question": "What is the powerhouse of the cell?",
+             "options": ["Nucleus", "Mitochondria", "Ribosome", "Chloroplast"], "answer": 1},
+            {"question": "Which element has the highest melting point?",
+             "options": ["Iron", "Osmium", "Tungsten", "Carbon"], "answer": 2},
+            {"question": "What is the speed of light in vacuum (m/s)?",
+             "options": ["3x10^6", "3x10^8", "3x10^10", "3x10^12"], "answer": 1}
+        ],
+    },
+    "History": {
+        "easy": [
+            {"question": "Who was the first President of the USA?",
+             "options": ["Abraham Lincoln", "George Washington", "Thomas Jefferson", "John Adams"], "answer": 1},
+            {"question": "In which year did World War II end?",
+             "options": ["1940", "1945", "1950", "1939"], "answer": 1},
+            {"question": "The Great Wall of China was built to protect against which group?",
+             "options": ["Romans", "Mongols", "Vikings", "Huns"], "answer": 1},
+            {"question": "What was the Renaissance?",
+             "options": ["War era", "Cultural rebirth", "Political revolution", "Economic crash"], "answer": 1},
+            {"question": "Which civilization built the pyramids?",
+             "options": ["Romans", "Greeks", "Egyptians", "Aztecs"], "answer": 2}
+        ],
+        "hard": [
+            {"question": "Who was the British Prime Minister during most of WWII?",
+             "options": ["Winston Churchill", "Neville Chamberlain", "Clement Attlee", "Margaret Thatcher"], "answer": 0},
+            {"question": "The Treaty of Versailles ended which war?",
+             "options": ["WWI", "WWII", "Cold War", "Crimean War"], "answer": 0},
+            {"question": "Who was known as the Sun King?",
+             "options": ["Louis XIV", "King Arthur", "Henry VIII", "Peter the Great"], "answer": 0},
+            {"question": "Sparta and Athens were city-states in which ancient civilization?",
+             "options": ["Rome", "Greece", "Egypt", "Mesopotamia"], "answer": 1},
+            {"question": "What year did the Berlin Wall fall?",
+             "options": ["1987", "1989", "1991", "1993"], "answer": 1}
+        ],
+    },
+    "Sports": {
+        "easy": [
+            {"question": "How many players are on a soccer team on the field?",
+             "options": ["9", "10", "11", "12"], "answer": 2},
+            {"question": "Which sport uses a racket and shuttlecock?",
+             "options": ["Tennis", "Badminton", "Squash", "Table Tennis"], "answer": 1},
+            {"question": "In basketball, how many points is a free throw worth?",
+             "options": ["1", "2", "3", "4"], "answer": 0},
+            {"question": "Which country won the FIFA World Cup in 2018?",
+             "options": ["Germany", "Brazil", "France", "Argentina"], "answer": 2},
+            {"question": "What sport is Muhammad Ali famous for?",
+             "options": ["Boxing", "Wrestling", "Football", "Baseball"], "answer": 0}
+        ],
+        "hard": [
+            {"question": "Which NFL team has the most Super Bowl wins?",
+             "options": ["Patriots", "Steelers", "Cowboys", "49ers"], "answer": 1},
+            {"question": "In tennis, what is a score of zero called?",
+             "options": ["Nil", "Zero", "Love", "Duck"], "answer": 2},
+            {"question": "Who holds the record for most Olympic gold medals?",
+             "options": ["Usain Bolt", "Michael Phelps", "Simone Biles", "Larisa Latynina"], "answer": 1},
+            {"question": "How many minutes is a professional soccer match?",
+             "options": ["80", "90", "100", "120"], "answer": 1},
+            {"question": "What country hosted the 2016 Summer Olympics?",
+             "options": ["China", "Brazil", "UK", "Russia"], "answer": 1}
+        ],
+    }
+}
+
+HIGHSCORE_FILE = "quiz_highscores.json"
+
+def load_highscores():
+    if os.path.exists(HIGHSCORE_FILE):
+        with open(HIGHSCORE_FILE, "r") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+def save_highscores(highscores):
+    with open(HIGHSCORE_FILE, "w") as f:
+        json.dump(highscores, f, indent=4)
+
+def print_progress_bar(current, total, bar_length=20):
+    progress = current / total
+    blocks = int(bar_length * progress)
+    bar = "█" * blocks + "░" * (bar_length - blocks)
+    percent = int(progress * 100)
+    print(f"[{bar}] {percent}% Complete\n")
+
+def quiz():
+    highscores = load_highscores()
+
+    print("=== QUIZ MASTER ===")
+    categories = list(QUIZ_QUESTIONS.keys())
+    print("Categories:", ", ".join(categories))
+
+    # Choose category
+    category = None
+    while category not in categories:
+        category = input("Select a category: ").strip()
+        if category not in categories:
+            print("Invalid category, please try again.")
+
+    # Choose difficulty
+    difficulties = list(QUIZ_QUESTIONS[category].keys())
+    difficulty = None
+    while difficulty not in difficulties:
+        difficulty = input(f"Select difficulty ({'/'.join(difficulties)}): ").strip().lower()
+        if difficulty not in difficulties:
+            print("Invalid difficulty, please try again.")
+
+    questions = QUIZ_QUESTIONS[category][difficulty]
+    total_questions = len(questions)
+
+    score = 0
+    correct_count = 0
+    question_times = []
+    incorrect_questions = []
+
+    print(f"\nSelected: {category} ({difficulty.capitalize()})\n")
+
+    for i, q in enumerate(questions, start=1):
+        print(f"Question {i}/{total_questions}: {q['question']}")
+        print_progress_bar(i-1, total_questions)
+
+        for idx, option in enumerate(q['options']):
+            print(f"{chr(65+idx)}) {option}", end="   ")
+        print()
+
+        start_time = time.time()
+        answer = None
+
+        while True:
+            user_input = input("Your answer: ").strip().upper()
+            if user_input in [chr(65 + idx) for idx in range(len(q['options']))]:
+                answer = ord(user_input) - 65
+                break
+            else:
+                print(f"Invalid input. Enter one of {', '.join(chr(65+idx) for idx in range(len(q['options'])))}")
+
+        elapsed = time.time() - start_time
+        question_times.append(elapsed)
+
+        if answer == q['answer']:
+            print("\n✅ Correct! (+10 points)")
+            correct_count += 1
+            score += 10
+        else:
+            print("\n❌ Incorrect.")
+            incorrect_questions.append({
+                "question": q['question'],
+                "your_answer": q['options'][answer],
+                "correct_answer": q['options'][q['answer']]
+            })
+
+        print(f"Time: {elapsed:.1f} seconds\n")
+
+    print_progress_bar(total_questions, total_questions)  # show 100% complete at end
+
+    print(f"FINAL SCORE: {score}/{total_questions*10} ({correct_count}/{total_questions} correct)")
+
+    if incorrect_questions:
+        print("\nReview of incorrect answers:")
+        for iq in incorrect_questions:
+            print(f"- Q: {iq['question']}")
+            print(f"  Your answer: {iq['your_answer']}")
+            print(f"  Correct answer: {iq['correct_answer']}\n")
+
+    # Save high score if it's better
+    user_scores = highscores.setdefault(category, {}).setdefault(difficulty, 0)
+    if score > user_scores:
+        highscores[category][difficulty] = score
+        save_highscores(highscores)
+        print(f"New personal best in {category} ({difficulty.capitalize()})!")
+
+def main():
+    try:
+        quiz()
+    except KeyboardInterrupt:
+        print("\nQuiz interrupted. Goodbye!")
+        sys.exit()
+
+if __name__ == "__main__":
+    main()
